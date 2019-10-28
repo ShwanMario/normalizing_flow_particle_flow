@@ -42,7 +42,7 @@ class particle_flow(Flow):
         self.sigma=sigma
         self.x=x
         self.flow_name=flow_name
-
+#get the jacobian matrix of x_tilde w.r.t. z
     def get_jacobian(self,z,x_tilde):
         z_repeat=z.repeat(x_tilde.shape[-1],1,1)
         x_tilde_repeat=self.decoder(z_repeat)
@@ -51,17 +51,24 @@ class particle_flow(Flow):
         z_repeat.retain_grad()
         x_tilde_repeat.backward(mat_repeat,retain_graph=True)
         return z_repeat.grad.data
-
+#particle flow
     def _call(self, z):
+        #covariance matrix of latent variables z
         p=torch.diag(self.sigma[0])
+        #reconstructed x before particle flow
         x_tilde=self.decoder(z)
         x_flatten_tilde = x_tilde.flatten()
         bar_eta=self.mu.reshape((self.mu.shape[0],-1,self.mu.shape[1]))
+        #covariance matrix of x_tilde, 784x784
         r = torch.diag(torch.max(x_flatten_tilde,1e-2*torch.ones(x_flatten_tilde.shape))* torch.max(1 - x_flatten_tilde,1e-2*torch.ones(x_flatten_tilde.shape)))#to avoid much too small elements of matrix r, here we set the minimum value as 1e-2
+        #determinant of particle flow
         gamma=0
         alpha=1
+        #particles before flow
         eta_1=z
+        #intervals
         lambda_1=0
+        #start to flow
         for j in range(self.intervals.shape[0]):
             lambda_1 = lambda_1 + self.intervals[j]
             h_eta=self.decoder(bar_eta)
@@ -76,9 +83,12 @@ class particle_flow(Flow):
             eta_1=(eta_1.transpose(1,0)+self.intervals[j]*(A_j_lambda@eta_1.transpose(1,0)+b_j_lambda)).transpose(1,0)
             alpha_mat = torch.eye(A_j_lambda.shape[0]) + self.intervals[j] * A_j_lambda
             alpha=alpha* torch.abs(torch.det(alpha_mat))
+        #end of flow
         gamma =gamma+ torch.log(alpha)
         self.gamma=gamma
+        #return the particles after flow
         return eta_1
+#the determinant of particle flow
     def log_abs_det_jacobian(self,z):
         return self.gamma
 class PlanarFlow(Flow):
