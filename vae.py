@@ -180,6 +180,7 @@ def multinomial_loss(x_logit, x,num_classes):
     return ce.sum(dim = 0)*100
 
 def reconstruction_loss(x_tilde, x, num_classes=1, average=True):
+    #here we use binary loss for MNIST dataset
     if (num_classes == 1):
         loss = binary_loss(x_tilde.flatten(), x.flatten())
     else:
@@ -267,8 +268,11 @@ def train_vae(model, optimizer, train_loader, model_name='basic', epochs=10, plo
             n_batch += 1.
         losses[it, :] /= n_batch
         print(("Epoch:{:>4}, loss:{:>4.2f}").format(it+1,losses[it,2].item()))
+    # visualize the training process
     plt.plot(range(epochs), (losses[:,2]).detach().numpy())
     plt.show()
-
+    # save losses and model parameters
     np.save('normalizing_flow.npy',losses)
+    torch.save(model.state_dict(),
+               ("normalizing_flow.model"))
     return losses

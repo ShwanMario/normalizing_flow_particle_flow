@@ -54,12 +54,13 @@ n_lambda=args.n_lambda
 encoder=construct_encoder_particle_flow()
 decoder=construct_decoder()
 parameters=[]
-#training parameters
 for _,parameter in enumerate(encoder.parameters()):
     parameters.append(parameter)
 for _,parameter in enumerate(decoder.parameters()):
     parameters.append(parameter)
+#adding paramters of encoder and decoder into training paramters
 parameters=nn.ParameterList(parameters)
+#create optimizer
 optimizer = optim.Adam(parameters, lr=learning_rate)
 losses = torch.zeros(epochs, 3)
 for it in range(epochs):
@@ -95,10 +96,10 @@ for it in range(epochs):
         n_batch+=1
     losses[it,:]/=n_batch
     print(("Epoch:{:>4}, loss:{:>4.2f}").format(it + 1, losses[it, 0].item() + losses[it, 1].item()))
-
+#visualize the training process
 plt.plot(range(epochs), (losses[:,2]).detach().numpy())
 plt.show()
-
+#save losses and model parameters
 np.save('particle_flow_'+str(n_lambda)+'_intervals.npy',losses)
 torch.save(encoder.state_dict(),
                    ("encoder_particle_flow.model"))
