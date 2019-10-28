@@ -13,4 +13,4 @@ python train_particle_flow.py
 python main_train.py
 ```
 
-See [the training file for particle flow](https://github.com/ShwanMario/IWAE/blob/master/Importance_Weighted_Autoencoders-master/MNIST/script/main_train.py) and [the training flie for normalizing flow](https://github.com/ShwanMario/IWAE/blob/master/Importance_Weighted_Autoencoders-master/MNIST/script/main_test.py) for more configurations.
+See [the training file for particle flow](https://github.com/ShwanMario/normalizing_flow_particle_flow/blob/master/train_particle_flow.py) and [the training flie for normalizing flow](https://github.com/ShwanMario/normalizing_flow_particle_flow/blob/master/main_train.py) for more configurations.
