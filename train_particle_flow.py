@@ -5,16 +5,12 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.distributions as distrib
 import torch.distributions.transforms as transform
-import matplotlib.animation as animation
 # Imports for plotting
-import numpy as np
-import pickle
 from torchvision import datasets
 from torchvision import transforms
 from Flow import *
 from vae import *
 import argparse
-import matplotlib.pyplot as plt
 
 import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser(description="VAE with Normalizing Flow")
@@ -31,7 +27,7 @@ parser.add_argument("--learning_rate",type=float,
                     default=0.001,
                     help="""learning rate""")
 parser.add_argument("--n_epochs",type=int,
-                    default=1000,
+                    default=50,
                     help="""number of training epochs""")
 parser.add_argument("--n_subsamples",type=int,
                     default=500,
@@ -48,14 +44,17 @@ train_dset = datasets.MNIST('./data', train=True, download=True, transform=tens_
 train_loader = torch.utils.data.DataLoader(train_dset, batch_size=batch_size, shuffle=True)
 test_dset = datasets.MNIST('./data', train=False, transform=tens_t)
 test_loader = torch.utils.data.DataLoader(test_dset, batch_size=batch_size, shuffle=True)
-#here we only use a subset of the whole dataset
+
+#here we only use a subset of the whole dataset (n samples are used here)
 subsample=args.n_subsamples
 epochs=args.n_epochs
+#the number of intervals in the particle flow
 n_lambda=args.n_lambda
 #encoder of particle flow
 encoder=construct_encoder_particle_flow()
 decoder=construct_decoder()
 parameters=[]
+#training parameters
 for _,parameter in enumerate(encoder.parameters()):
     parameters.append(parameter)
 for _,parameter in enumerate(decoder.parameters()):
@@ -70,20 +69,24 @@ for it in range(epochs):
             break
         mu,sigma=encoder(x)
         q = distrib.Normal(torch.zeros(mu.shape[1]), torch.ones(sigma.shape[1]))
+#samples from Gaussian distribution N(mu,sigma)
         z_0 = ((sigma) * q.sample((1,))) + mu
         flow = particle_flow(decoder,mu,sigma,x,n_lambda=n_lambda)
+#z_0 flow to z_k
         z_k=flow(z_0)
         x_tilde=decoder(z_k)
         log_p_zk = (-0.5 * z_k * z_k).sum()
+#log(z_0|x)+sum(det)
         log_q_z0 = (-sigma.log() -0.5* (z_0 - mu) * (z_0 - mu) /(sigma**2)).sum()
         log_q_z0=log_q_z0+flow.gamma
-        #losses of latent variables z_0 and z_k
+#losses of latent variables z_0 and z_k
         loss_latent=log_q_z0-log_p_zk
-        #reconstruction error
+#reconstruction error
         loss_recons = reconstruction_loss(x_tilde, x, num_classes=1)
         loss = loss_recons + ( loss_latent)
         optimizer.zero_grad()
         loss.backward()
+#update paramters
         optimizer.step()
         print('Epoch:',it+1,'iter:',batch_idx,'loss:',loss.item(),'reconstruction_loss:',loss_recons,'log_q_z0:',log_q_z0,'log_p_zk:',log_p_zk)
         losses[it,0]+=loss_recons.item()

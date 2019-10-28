@@ -236,7 +236,7 @@ class VAENormalizingFlow(VAE):
 
 
 
-def train_vae(model, optimizer, train_loader, fixed_batch, model_name='basic', epochs=10, plot_it=1, subsample=500, flatten=False,num_classes=1,batch_size=1,nin=784):
+def train_vae(model, optimizer, train_loader, model_name='basic', epochs=10, plot_it=1, subsample=500, flatten=False,num_classes=1,batch_size=1,nin=784):
     # Losses curves
     losses = torch.zeros(epochs, 3)
     # Main optimization loop

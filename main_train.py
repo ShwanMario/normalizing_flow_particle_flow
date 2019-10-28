@@ -16,7 +16,7 @@ parser.add_argument("--flow_length",type=int,
                     default=4,
                     help="""length of normalizing flow""")
 parser.add_argument("--n_epochs",type=int,
-                    default=10000,
+                    default=50,
                     help="""number of training epochs""")
 parser.add_argument("--n_subsamples",type=int,
                     default=500,
@@ -31,7 +31,7 @@ learning_rate=args.learning_rate
 n_epochs=args.n_epochs
 flow_length=args.flow_length
 
-# Number of hidden and latent
+# Number of neurons in hidden layer and latent variable layer
 n_hidden = 450
 n_latent = 64
 
@@ -44,7 +44,6 @@ test_loader = torch.utils.data.DataLoader(test_dset, batch_size=batch_size, shuf
 
 
 
-fixed_batch, fixed_targets = next(iter(test_loader))
 
 block_planar = [PlanarFlow]
 # Create normalizing flow
@@ -56,6 +55,6 @@ model_flow = VAENormalizingFlow(encoder, decoder, flow, n_hidden, n_latent)
 # Create optimizer algorithm
 optimizer = optim.Adam(model_flow.parameters(), lr=args.learning_rate)
 # Launch our optimization
-losses_flow = train_vae(model_flow, optimizer,  train_loader, fixed_batch, model_name='normalizing_flow', epochs=n_epochs,subsample=500)
+losses_flow = train_vae(model_flow, optimizer,  train_loader,  model_name='normalizing_flow', epochs=n_epochs,subsample=500)
 
 
