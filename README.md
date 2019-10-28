@@ -3,7 +3,7 @@
 This code is used for comparing the convergence rate of particle flow with normalizing flow, we evaluate their performance on MNIST dataset.
 
 # Running the experiments
-This code allows you to train vae with particle flow or normalizing flow on MNIST dataset. To train the model, run the following commands.
+To train the vae with particle flow or normalizing flow on MNIST dataset, run the following commands.
 ## Trainning VAE with particle flow
 ```
 python train_particle_flow.py
