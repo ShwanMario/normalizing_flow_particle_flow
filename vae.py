@@ -8,6 +8,7 @@ from torch.utils.data import Dataset, DataLoader
 # Imports for plotting
 import numpy as np
 import matplotlib.pyplot as plt
+from Flow import *
 # Define grids of points (for later plots)
 
 
@@ -275,4 +276,51 @@ def train_vae(model, optimizer, train_loader, model_name='basic', epochs=10, plo
     np.save('normalizing_flow.npy',losses)
     torch.save(model.state_dict(),
                ("normalizing_flow.model"))
+    return losses
+
+def train_vae_particle_flow(encoder,decoder, optimizer, train_loader,n_lambda=3, model_name='basic', epochs=10, plot_it=1, subsample=500, flatten=False,num_classes=1,batch_size=1,nin=784):
+    losses = torch.zeros(epochs, 3)
+    for it in range(epochs):
+        n_batch = 0
+        for batch_idx, (x, _) in enumerate(train_loader):
+            if (batch_idx * batch_size) > subsample:
+                break
+            mu, sigma = encoder(x)
+            q = distrib.Normal(torch.zeros(mu.shape[1]), torch.ones(sigma.shape[1]))
+            # samples from Gaussian distribution N(mu,sigma)
+            z_0 = ((sigma) * q.sample((1,))) + mu
+            flow = particle_flow(decoder, mu, sigma, x, n_lambda=n_lambda)
+            # z_0 flow to z_k
+            z_k = flow(z_0)
+            x_tilde = decoder(z_k)
+            log_p_zk = (-0.5 * z_k * z_k).sum()
+            # log(z_0|x)+sum(det)
+            log_q_z0 = (-sigma.log() - 0.5 * (z_0 - mu) * (z_0 - mu) / (sigma ** 2)).sum()
+            log_q_z0 = log_q_z0 - flow.gamma
+            # losses of latent variables z_0 and z_k
+            loss_latent = log_q_z0 - log_p_zk
+            # reconstruction error
+            loss_recons = reconstruction_loss(x_tilde, x, num_classes=1)
+            loss = loss_recons + (loss_latent)
+            optimizer.zero_grad()
+            loss.backward()
+            # update paramters
+            optimizer.step()
+            print('Epoch:', it + 1, 'iter:', batch_idx, 'loss:', loss.item(), 'reconstruction_loss:', loss_recons,
+                  'log_q_z0:', log_q_z0, 'log_p_zk:', log_p_zk)
+            losses[it, 0] += loss_recons.item()
+            losses[it, 1] += loss_latent.item()
+            losses[it, 2] += loss_recons.item() + loss_latent.item()
+            n_batch += 1
+        losses[it, :] /= n_batch
+        print(("Epoch:{:>4}, loss:{:>4.2f}").format(it + 1, losses[it, 0].item() + losses[it, 1].item()))
+    # visualize the training process
+    plt.plot(range(epochs), (losses[:, 2]).detach().numpy())
+    plt.show()
+    # save losses and model parameters
+    np.save('particle_flow_' + str(n_lambda) + '_intervals.npy', losses)
+    torch.save(encoder.state_dict(),
+               ("encoder_particle_flow.model"))
+    torch.save(decoder.state_dict(),
+               ("decoder_particle_flow.model"))
     return losses

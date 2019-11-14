@@ -60,7 +60,8 @@ class particle_flow(Flow):
         x_flatten_tilde = x_tilde.flatten()
         bar_eta=self.mu.reshape((self.mu.shape[0],-1,self.mu.shape[1]))
         #covariance matrix of x_tilde, 784x784
-        r = torch.diag(torch.max(x_flatten_tilde,1e-2*torch.ones(x_flatten_tilde.shape))* torch.max(1 - x_flatten_tilde,1e-2*torch.ones(x_flatten_tilde.shape)))#to avoid much too small elements of matrix r, here we set the minimum value as 1e-2
+        #r = torch.diag(torch.max(x_flatten_tilde,1e-2*torch.ones(x_flatten_tilde.shape))* torch.max(1 - x_flatten_tilde,1e-2*torch.ones(x_flatten_tilde.shape)))#to avoid much too small elements of matrix r, here we set the minimum value as 1e-2
+        r=torch.diag(x_flatten_tilde*(1-x_flatten_tilde))+1e-4*torch.diag(torch.ones(x_flatten_tilde.shape[0]))
         #determinant of particle flow
         gamma=0
         alpha=1
@@ -74,10 +75,14 @@ class particle_flow(Flow):
             h_eta=self.decoder(bar_eta)
             h_eta=h_eta.flatten()
             H=self.get_jacobian(bar_eta,h_eta).squeeze()
+            e_lambda=h_eta.reshape(h_eta.shape[0],1)-H@bar_eta.reshape(bar_eta.shape[-1],1)
             bar_eta=bar_eta.squeeze(1)
             square_mat=lambda_1*H@p@(H.transpose(1,0))+r
+            #temp=np.linalg.solve(square_mat.detach().numpy(),H.detach().numpy())
+            #A_j_lambda=-1/2*p@H.transpose(1,0)@temp
             A_j_lambda=-1/2*p@H.transpose(1,0)@square_mat.inverse()@H
-            temp=(torch.eye(bar_eta.shape[-1])+lambda_1*A_j_lambda)@p@H.transpose(1,0)@r.inverse()@self.x.reshape((784,1))+A_j_lambda@self.mu.transpose(1,0)
+            temp=(torch.eye(bar_eta.shape[-1])+lambda_1*A_j_lambda)@p@H.transpose(1,0)@r.inverse()@(self.x.reshape((x_flatten_tilde.shape[0],1))-e_lambda)+A_j_lambda@self.mu.transpose(1,0)
+            #temp = (torch.eye(bar_eta.shape[-1]) + lambda_1 * A_j_lambda) @ p @ H.transpose(1, 0) @ r.inverse() @self.x.reshape((x_flatten_tilde.shape[0], 1)) + A_j_lambda @ self.mu.transpose(1, 0)
             b_j_lambda=(torch.eye(bar_eta.shape[-1])+2*lambda_1*A_j_lambda)@temp
             bar_eta=(bar_eta.transpose(1,0)+self.intervals[j]*(A_j_lambda@bar_eta.transpose(1,0)+b_j_lambda)).transpose(1,0)
             eta_1=(eta_1.transpose(1,0)+self.intervals[j]*(A_j_lambda@eta_1.transpose(1,0)+b_j_lambda)).transpose(1,0)

@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(description="VAE with Normalizing Flow")
 parser.add_argument("--batch_size",type=int,
                     default=1,
                     help="""batch size for training""")
-parser.add_argument("--flow_length",type=int,
+parser.add_argument("--flow_length_normalizing_flow",type=int,
                     default=4,
                     help="""length of normalizing flow""")
 parser.add_argument("--n_epochs",type=int,
@@ -24,12 +24,17 @@ parser.add_argument("--n_subsamples",type=int,
 parser.add_argument("--learning_rate",type=float,
                     default=0.001,
                     help="""learning rate""")
+parser.add_argument("--n_lambda_particle_flow",type=int,
+                    default=3,
+                    help="""number of intervals in the flow""")
 args = parser.parse_args()
 
 batch_size =args.batch_size
 learning_rate=args.learning_rate
 n_epochs=args.n_epochs
-flow_length=args.flow_length
+flow_length=args.flow_length_normalizing_flow
+subsample=args.n_subsamples
+n_lambda=args.n_lambda_particle_flow
 
 # Number of neurons in hidden layer and latent variable layer
 n_hidden = 450
@@ -55,6 +60,19 @@ model_flow = VAENormalizingFlow(encoder, decoder, flow, n_hidden, n_latent)
 # Create optimizer algorithm
 optimizer = optim.Adam(model_flow.parameters(), lr=args.learning_rate)
 # Launch our optimization
-losses_flow = train_vae(model_flow, optimizer,  train_loader,  model_name='normalizing_flow', epochs=n_epochs,subsample=500)
+losses_normalizing_flow = train_vae(model_flow, optimizer,  train_loader,  model_name='normalizing_flow', epochs=n_epochs,subsample=subsample)
+
+encoder_particle_flow=construct_encoder_particle_flow()
+decoder_particle_flow=construct_decoder()
+parameters=[]
+for _,parameter in enumerate(encoder_particle_flow.parameters()):
+    parameters.append(parameter)
+for _,parameter in enumerate(decoder_particle_flow.parameters()):
+    parameters.append(parameter)
+#adding paramters of encoder and decoder into training paramters
+parameters=nn.ParameterList(parameters)
+#create optimizer
+optimizer = optim.Adam(parameters, lr=learning_rate)
+losses_particle_flow=train_vae_particle_flow(encoder_particle_flow,decoder_particle_flow, optimizer, train_loader)
 
 

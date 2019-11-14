@@ -79,7 +79,7 @@ for it in range(epochs):
         log_p_zk = (-0.5 * z_k * z_k).sum()
 #log(z_0|x)+sum(det)
         log_q_z0 = (-sigma.log() -0.5* (z_0 - mu) * (z_0 - mu) /(sigma**2)).sum()
-        log_q_z0=log_q_z0+flow.gamma
+        log_q_z0=log_q_z0-flow.gamma
 #losses of latent variables z_0 and z_k
         loss_latent=log_q_z0-log_p_zk
 #reconstruction error
